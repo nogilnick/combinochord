@@ -14,132 +14,165 @@ import java.util.concurrent.TimeUnit;
  * chord fingerings on a provided guitar model and
  * hand model.
  */
-public class Searcher
-{   //The maximum number of mutes allowed
-	private int maxMts;
+public class Searcher {   //The maximum number of mutes allowed
+    private final int maxMts;
     //The minimum chord score each candidate must
     //Achieve to be included in the final list
-    private double minChrdScr;
+    private final double minChrdScr;
     //The maximum distance to search from any
     //depressed finger
-    private double maxSrchDst;
+    private final double maxSrchDst;
     //A model of the guitar being played
-	private Guitar guit;
+    private final Guitar guit;
     //A model of the player's hand
-	private HandModel hm;
-    //The list of results (valid only after searching)
-	private List<Fingering> chrdRes;
+    private final HandModel hm;
     //True iff barre chords are enabled
-    private boolean enblBarre;
+    private final boolean enblBarre;
+    //The list of results (valid only after searching)
+    private List<Fingering> chrdRes;
 
-	public void DeleteDuplicates()
-	{
+    /**
+     * Searcher constructor
+     *
+     * @param gt      The guitar to use
+     * @param handMod The hand model to use
+     * @param mmts    The maximum number of mutes allowed
+     * @param mincs   The minimum chord score
+     * @param maxsd   The maximum distance to search
+     */
+    public Searcher(Guitar gt, HandModel handMod, int mmts, double mincs, double maxsd, boolean barre) {
+        guit = gt;
+        hm = handMod;
+        maxMts = mmts;
+        minChrdScr = mincs;
+        maxSrchDst = maxsd;
+        enblBarre = barre;
+    }
+
+    /**
+     * Attempts to assign tonics roughly evenly among threads
+     *
+     * @param tonics The list of tonics
+     * @param nt     The number of threads
+     * @return A list of lists of tonics for each thread
+     */
+    private List<List<FretPosition>> AssignTonics(List<FretPosition> tonics, int nt) {   //Assign fret positions using first bit decreasing
+        List<List<FretPosition>> tns = new ArrayList<>(nt);
+        //Initialize array
+        int tpt = (int) Math.ceil((double) tonics.size() / (double) nt);
+        for (int i = 0; i < nt; ++i)
+            tns.add(new ArrayList<FretPosition>(tpt));
+        //Assign tonics in a card-dealing fashion
+        for (int i = 0; i < tonics.size(); ++i)
+            tns.get(i / tpt).add(tonics.get(i));
+        return tns;
+    }
+
+    public void DeleteDuplicates() {
         SortChords();
-        for(int i = 0; i < chrdRes.size() - 1; ++i)
-        {
-            if(chrdRes.get(i).Compare(chrdRes.get(i + 1)))
+        for (int i = 0; i < chrdRes.size() - 1; ++i) {
+            if (chrdRes.get(i).Compare(chrdRes.get(i + 1)))
                 chrdRes.remove(i-- + 1);
         }
-	}
+    }
 
-	public boolean[] FindPotentialBars(FretPosition[] fp, FretPosition tonic, List<FretPosition> lfps)
-	{   //Positions of the 4 fingers; guaranteed init to false via java spec
-		boolean[] shldBar = new boolean[fp.length];
-		//Test each finger to see if it would be beneficial to try a barre
-		for(int i = 0; i < lfps.size(); ++i)
-		{
+    private boolean[] FindPotentialBars(FretPosition[] fp, FretPosition tonic, List<FretPosition> lfps) {   //Positions of the 4 fingers; guaranteed init to false via java spec
+        boolean[] shldBar = new boolean[fp.length];
+        //Test each finger to see if it would be beneficial to try a barre
+        for (int i = 0; i < lfps.size(); ++i) {
             boolean skip = false;
-            for(FretPosition aFp : fp)
-            {
-                if (lfps.get(i).str == aFp.str && lfps.get(i).frt < aFp.frt)
-                {   //Test to make sure beneficial note is not already blocked by other finger
+            for (FretPosition aFp : fp) {
+                if (lfps.get(i).str == aFp.str && lfps.get(i).frt < aFp.frt) {   //Test to make sure beneficial note is not already blocked by other finger
                     skip = true;
                     break;
                 }
             }
-            if(skip)
+            if (skip)
                 continue;
-            for(int j = 0; j < fp.length; ++j) {
-                if(fp[j].frt == lfps.get(i).frt && fp[j].str < lfps.get(i).str)
+            for (int j = 0; j < fp.length; ++j) {
+                if (fp[j].frt == lfps.get(i).frt && fp[j].str < lfps.get(i).str)
                     shldBar[j] = true;
             }
-		}
-		//Test to make sure barres would not overlap
-		for(int i = 0; i < shldBar.length; ++i)
-		{
-            if(fp[i].frt > tonic.frt && fp[i].str <= tonic.str)
+        }
+        //Test to make sure barres would not overlap
+        for (int i = 0; i < shldBar.length; ++i) {
+            if (fp[i].frt > tonic.frt && fp[i].str <= tonic.str)
                 shldBar[i] = false;
-			for(int j = i + 1; j < shldBar.length; ++j)
-			{
-                if(fp[i].frt == fp[j].frt)
+            for (int j = i + 1; j < shldBar.length; ++j) {
+                if (fp[i].frt == fp[j].frt)
                     shldBar[i] = shldBar[j] = false;
-                else if(fp[i].str >= fp[j].str)
+                else if (fp[i].str >= fp[j].str)
                     shldBar[j] = false;
-			}
-		}
-		return shldBar;
-	}
-    
+            }
+        }
+        return shldBar;
+    }
+
+    /**
+     * Function for getting an empty fingering
+     *
+     * @return A fingering corresponding to strumming all
+     * open strings.
+     */
+    public Fingering GetOpen() {
+        return new Fingering(guit.OpenStrings(), 0, new int[0], 0.0, false);
+    }
+
     /**
      * Generates a list of Fingering objects based on the current Guitar,
      * HandModel, and the chord provided. Results are stored in a private data
      * member that can be accessed using GetChords()
+     *
      * @param chrd The chord provided
      */
-    public void GenerateChords(int[] chrd, int numThrds)
-    {
+    public void GenerateChords(int[] chrd, int numThrds) {
         chrdRes = new LinkedList<>();
+        //Handle case of empty chord
+        if (chrd.length == 0)
+            return;
         List<FretPosition> fps = guit.FindNotePositions(chrd);
         //Find the tonic positions
-        //List<List<FretPosition>> tonicAssignments = AssignTonics(FretPosition.FindFretPos(fps, chrd[0]), numThrds);
         List<FretPosition> tncs = FretPosition.FindFretPos(fps, chrd[0]);
         //Find the non-tonic positions
         List<FretPosition> fPos = new ArrayList<>();
-        for(int i = 0; i < fps.size(); ++i)
-        {
-            if(fps.get(i).frt > 0)
+        for (int i = 0; i < fps.size(); ++i) {
+            if (fps.get(i).frt > 0)
                 fPos.add(fps.get(i));
         }
         SearchTask[] srchTsks = new SearchTask[tncs.size()];
         //Create a thread pool to search for fingerings
         ExecutorService xrsrv = Executors.newFixedThreadPool(numThrds);
-        for(int i = 0; i < tncs.size(); ++i)
-        {	//Add tonic search sub-tasks
-        	srchTsks[i] = new SearchTask(chrd, tncs.get(i), fPos);
+        for (int i = 0; i < tncs.size(); ++i) {    //Add tonic search sub-tasks
+            srchTsks[i] = new SearchTask(chrd, tncs.get(i), fPos);
             xrsrv.submit(srchTsks[i]);
         }
         xrsrv.shutdown();
-        try
-        {
-        	xrsrv.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+        try {
+            xrsrv.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {    //Main thread was interrupted while awaiting termination
+            e.printStackTrace();
         }
-        catch(InterruptedException e)
-        {	//Main thread was interrupted while awating termination
-        	e.printStackTrace();
-        }
-        for(int i = 0; i < srchTsks.length; ++i)
-        {
-        	List<Fingering> tmp = srchTsks[i].GetChords();
-        	if(tmp != null)
-        		chrdRes.addAll(tmp);
+        for (SearchTask srchTsk : srchTsks) {
+            List<Fingering> tmp = srchTsk.GetChords();
+            if (tmp != null)
+                chrdRes.addAll(tmp);
         }
     }
 
     /**
-     * Get the list of generated chords
+     * Get the list of generated chords.
+     *
      * @return The list of generated chords
      */
-	public List<Fingering> GetChords()
-	{
-		return chrdRes;
-	}
+    public List<Fingering> GetChords() {
+        return chrdRes;
+    }
 
     /**
      * Sorts the chrds data member based on Fingering score
      */
-    public void SortChords()
-    {
-        if(chrdRes == null)
+    public void SortChords() {
+        if (chrdRes == null)
             return;
         Collections.sort(chrdRes, new Comparator<Fingering>() {
             public int compare(Fingering f1, Fingering f2) {
@@ -152,201 +185,114 @@ public class Searcher
 
     /**
      * This function searches for potential fingerings
-     * @param chrd The chord to search for
+     *
+     * @param chrd  The chord to search for
      * @param tonic The tonic position
-     * @param fPos The list of potential non-tonic positions
+     * @param notePos The list of potential non-tonic positions
      * @return The list of discovered fingerings
      */
-    public List<Fingering> Search(int[] chrd, FretPosition tonic, List<FretPosition> fPos)
-    {
-    	List<Fingering> dscChrds = new ArrayList<>();
-        //Initialize first filter to all true
-        boolean[] filt = new boolean[fPos.size()];
-        for(int i = 0; i < filt.length; ++i)
-            filt[i] = true;
-        if(hm.GetNumFngr() < 1)    //Using 0 fingers; done searching
+    private List<Fingering> Search(int[] chrd, FretPosition tonic, List<FretPosition> notePos) {
+        List<Fingering> dscChrds = new ArrayList<>();
+        if (hm.GetNumFngr() < 1)    //Using 0 fingers; done searching
             return dscChrds;
-        //curI is the tonic
-        FretPosition curI = tonic;
-        if(curI.frt == 0)
-        {   //Current tonic is an open string
-            boolean[] filt1 = FretPosition.TonicFilter(fPos, curI, filt);
-            //Using one finger
-            for (int j = 0; j < fPos.size(); ++j)
-            {   //Place first finger
-                if(filt1[j])
-                    TryCandidate(dscChrds, fPos, chrd, curI, fPos.get(j), null, null, null);
-            }
-            if(hm.GetNumFngr() < 2)    //Only using 1 finger; done searching
-                return dscChrds;
-            //Using two fingers
-            for(int j = 0; j < fPos.size(); ++j) {    //Place first finger
-                if(!filt1[j])
-                    continue;
+        //tonic is the first selection
+        if (tonic.frt == 0) {   //Current tonic is an open string
+            List<FretPosition> fPos = FretPosition.TonicFilter(notePos, tonic);
+            for (int j = 0; j < fPos.size(); ++j) {   //Place first finger
                 FretPosition curJ = fPos.get(j);
-                boolean[] filt2 = FretPosition.Filter1(fPos, curJ, maxSrchDst, filt1);
-                for(int k = j + 1; k < fPos.size(); ++k) {    //Place second finger
-                    if(filt2[k])
-                        TryCandidate(dscChrds, fPos, chrd, curI, curJ, fPos.get(k), null, null);
-                }
-            }
-            if(hm.GetNumFngr() < 3)    //Only using 2 fingers; done searching
-                return dscChrds;
-            //Using three fingers
-            for(int j = 0; j < fPos.size(); ++j) {    //Place first finger
-                if(!filt1[j])
-                    continue;
-                FretPosition curJ = fPos.get(j);
-                boolean[] filt2 = FretPosition.Filter1(fPos, curJ, maxSrchDst, filt1);
-                for(int k = j + 1; k < fPos.size(); ++k) {    //Place second finger
-                    if(!filt2[k])
-                        continue;
-                    FretPosition curK = fPos.get(k);
-                    boolean[] filt3 = FretPosition.Filter1(fPos, curK, maxSrchDst, filt2);
-                    for(int l = k + 1; l < fPos.size(); ++l) {    //Place third finger
-                        if(filt3[l])
-                            TryCandidate(dscChrds, fPos, chrd, curI, curJ, curK, fPos.get(l), null);
-                    }
-                }
-            }
-            if(hm.GetNumFngr() < 4)    //Only using 3 finger; done searching
-                return dscChrds;
-            //Using four fingers
-            for(int j = 0; j < fPos.size(); ++j) {    //Place first finger
-                if(!filt1[j])
-                    continue;
-                FretPosition curJ = fPos.get(j);
-                boolean[] filt2 = FretPosition.Filter1(fPos, curJ, maxSrchDst, filt1);
-                for(int k = j + 1; k < fPos.size(); ++k) {    //Place second finger
-                    if(!filt2[k])
-                        continue;
-                    FretPosition curK = fPos.get(k);
-                    boolean[] filt3 = FretPosition.Filter1(fPos, curK, maxSrchDst, filt2);
-                    for(int l = k + 1; l < fPos.size(); ++l) {    //Place third finger
-                        if(!filt3[l])
-                            continue;
-                        FretPosition curL = fPos.get(l);
-                        boolean[] filt4 = FretPosition.Filter1(fPos, curL, maxSrchDst, filt3);
-                        for(int m = l + 1; m < fPos.size(); ++m) {    //Place fourth finger
-                            if(filt4[m])
-                                TryCandidate(dscChrds, fPos, chrd, curI, curJ, curK, curL, fPos.get(m));
+            	TryCandidate(dscChrds, fPos, chrd, tonic, curJ, null, null, null);
+            	if(hm.GetNumFngr() < 2)	//Only using 1 finger; don't consider further fingerings
+            		continue;
+            	List<FretPosition> fPos2 = FretPosition.Filter1(fPos, j, maxSrchDst);
+            	for (int k = 0; k < fPos2.size(); ++k) {
+            		//Place second finger
+            		FretPosition curK = fPos2.get(k);
+            		TryCandidate(dscChrds, fPos, chrd, tonic, curJ, curK, null, null);
+                    if (hm.GetNumFngr() < 3)    //Only using 2 fingers; don't consider further fingerings
+                        return dscChrds;
+                    List<FretPosition> fPos3 = FretPosition.Filter1(fPos2, k, maxSrchDst);
+                    for (int l = 0; l < fPos3.size(); ++l) {    //Place third finger
+                    	FretPosition curL = fPos3.get(l);
+                    	TryCandidate(dscChrds, fPos, chrd, tonic, curJ, curK, curL, null);
+                        if (hm.GetNumFngr() < 4)    //Only using 3 finger; don't consider further fingerings
+                            return dscChrds;
+                        List<FretPosition> fPos4 = FretPosition.Filter1(fPos3, l, maxSrchDst);
+                        for (FretPosition curM : fPos4) {    //Place fourth finger
+                        	TryCandidate(dscChrds, fPos, chrd, tonic, curJ, curK, curL, curM);
                         }
                     }
-                }
+            	}
             }
-        }
-        else
-        {   //Current tonic is not an open string
-            boolean[] filt1 = FretPosition.Filter2(fPos, curI, maxSrchDst, filt);
+        } else {   //Current tonic is not an open string
+            List<FretPosition> fPos = FretPosition.TonicFilterNO(notePos, tonic, maxSrchDst);
             //Using one finger
-            TryCandidate(dscChrds, fPos, chrd, curI, null, null, null, null);
-            if(hm.GetNumFngr() < 2)    //Only using 1 finger; done searching
+            TryCandidate(dscChrds, fPos, chrd, tonic, null, null, null, null);
+            if (hm.GetNumFngr() < 2)    //Only using 1 finger; done searching
                 return dscChrds;
             //Using two fingers
-            for(int j = 0; j < fPos.size(); ++j) {
-                if(filt1[j])
-                    TryCandidate(dscChrds, fPos, chrd, curI, null, fPos.get(j), null, null);
-            }
-            if(hm.GetNumFngr() < 3)    //Only using 2 fingers; done searching
-                return dscChrds;
-            //Using three fingers
-            for(int j = 0; j < fPos.size(); ++j) {    //Place first finger
-                if(!filt1[j])
-                    continue;
+            for (int j = 0; j < fPos.size(); ++j) {
                 FretPosition curJ = fPos.get(j);
-                boolean[] filt2 = FretPosition.Filter1(fPos, curJ, maxSrchDst, filt1);
-                for(int k = j + 1; k < fPos.size(); ++k) {    //Place second finger
-                    if(filt2[k])
-                        TryCandidate(dscChrds, fPos, chrd, curI, null, curJ, fPos.get(k), null);
-                }
-            }
-            if(hm.GetNumFngr() < 4)    //Only using 3 fingers; done searching
-                return dscChrds;
-            //Using four fingers
-            for (int j = 0; j < fPos.size(); ++j) {    //Place first finger
-                if(!filt1[j])
-                    continue;
-                FretPosition curJ = fPos.get(j);
-                boolean[] filt2 = FretPosition.Filter1(fPos, curJ, maxSrchDst, filt1);
-                for(int k = j + 1; k < fPos.size(); ++k) {    //Place second finger
-                    if(!filt2[k])
-                        continue;
-                    FretPosition curK = fPos.get(k);
-                    boolean[] filt3 = FretPosition.Filter1(fPos, curK, maxSrchDst, filt2);
-                    for (int l = k + 1; l < fPos.size(); ++l) {    //Place third finger
-                        if(filt3[l])
-                            TryCandidate(dscChrds, fPos, chrd, curI, null, curJ, curK, fPos.get(l));
+            	TryCandidate(dscChrds, fPos, chrd, tonic, null, curJ, null, null);
+                if (hm.GetNumFngr() < 3)    //Only using 2 fingers; don't consider further fingerings
+                    return dscChrds;
+            	List<FretPosition> fPos2 = FretPosition.Filter1(fPos, j, maxSrchDst);
+            	for (int k = 0; k < fPos2.size(); ++k) {
+            		//Place second finger
+            		FretPosition curK = fPos2.get(k);
+                    TryCandidate(dscChrds, fPos, chrd, tonic, null, curJ, curK, null);
+                    if (hm.GetNumFngr() < 4)    //Only using 3 fingers; don't consider further fingerings
+                        return dscChrds;
+                    List<FretPosition> fPos3 = FretPosition.Filter1(fPos2, k, maxSrchDst);
+                    for (FretPosition curL : fPos3) {    //Place third finger
+                        TryCandidate(dscChrds, fPos, chrd, tonic, null, curJ, curK, curL);
                     }
-                }
+            	}
             }
         }
         return dscChrds;
-    }
-    
-    /**
-     * Searcher constructor
-     * @param gt The guitar to use
-     * @param handMod The hand model to use
-     * @param mmts The maximum number of mutes allowed
-     * @param mincs The minimum chord score
-     * @param maxsd The maximum distance to search
-     */
-    public Searcher(Guitar gt, HandModel handMod, int mmts, double mincs, double maxsd, boolean barre)
-    {
-        guit = gt;
-        hm = handMod;
-        maxMts = mmts;
-        minChrdScr = mincs;
-        maxSrchDst = maxsd;
-        enblBarre = barre;
     }
 
     /**
      * This function attempts to create a Fingering object
      * based on the current search positions
+     *
      * @param chrds The list of fingerings to append results to
-     * @param lfps The entire list of FretPositions
-     * @param chrd The chord
+     * @param lfps  The entire list of FretPositions
+     * @param chrd  The chord
      * @param tonic The FretPosition of the tonic
-     * @param i The 1st selected FretPosition
-     * @param j The 2nd selected FretPosition
-     * @param k The 3rd selected FretPosition
-     * @param l The 4th selected FretPosition
+     * @param i     The 1st selected FretPosition
+     * @param j     The 2nd selected FretPosition
+     * @param k     The 3rd selected FretPosition
+     * @param l     The 4th selected FretPosition
      */
-    private void TryCandidate(List<Fingering> chrds, List<FretPosition> lfps, int[] chrd, FretPosition tonic, FretPosition i, FretPosition j, FretPosition k, FretPosition l)
-    {
+    private void TryCandidate(List<Fingering> chrds, List<FretPosition> lfps, int[] chrd, FretPosition tonic, FretPosition i, FretPosition j, FretPosition k, FretPosition l) {
         //Initilize the fingering array with open strings
         FretPosition[] chrdPos = new FretPosition[guit.GetNumStrings()];
-        for(int n = 0; n < guit.GetNumStrings(); ++n)
+        for (int n = 0; n < guit.GetNumStrings(); ++n)
             chrdPos[n] = guit.GuitarFretPos(n, 0).Clone();
         int numPos;
-        if(l != null)   //All four fingers are placed
+        if (l != null)   //All four fingers are placed
             numPos = 4;
-        else if(k != null)  //3 fingers are placed
+        else if (k != null)  //3 fingers are placed
             numPos = 3;
-        else if(j != null)  //2 fingers
+        else if (j != null)  //2 fingers
             numPos = 2;
         else    //1 finger
             numPos = 1;
         FretPosition[] selPos = new FretPosition[numPos];
-        if(tonic.frt != 0)
-        {   //Tonic may be out of order; order it correctly
-            switch(numPos)
-            {
+        if (tonic.frt != 0) {   //Tonic may be out of order; order it correctly
+            switch (numPos) {
                 case 1:
                     selPos[0] = chrdPos[tonic.str];
                     selPos[0].Set(tonic);
                     break;
                 case 2:
-                    if(tonic.fretId < j.fretId)
-                    {
+                    if (tonic.fretId < j.fretId) {
                         selPos[0] = chrdPos[tonic.str];
                         selPos[0].Set(tonic);
                         selPos[1] = chrdPos[j.str];
                         selPos[1].Set(j);
-                    }
-                    else
-                    {
+                    } else {
                         selPos[0] = chrdPos[j.str];
                         selPos[0].Set(j);
                         selPos[1] = chrdPos[tonic.str];
@@ -355,25 +301,21 @@ public class Searcher
                     break;
                 case 3:
                     //Already know j < k
-                    if(tonic.fretId < j.fretId) {
+                    if (tonic.fretId < j.fretId) {
                         selPos[0] = chrdPos[tonic.str];
                         selPos[0].Set(tonic);
                         selPos[1] = chrdPos[j.str];
                         selPos[1].Set(j);
                         selPos[2] = chrdPos[k.str];
                         selPos[2].Set(k);
-                    }
-                    else if(tonic.fretId < k.fretId)
-                    {
+                    } else if (tonic.fretId < k.fretId) {
                         selPos[0] = chrdPos[j.str];
                         selPos[0].Set(j);
                         selPos[1] = chrdPos[tonic.str];
                         selPos[1].Set(tonic);
                         selPos[2] = chrdPos[k.str];
                         selPos[2].Set(k);
-                    }
-                    else
-                    {
+                    } else {
                         selPos[0] = chrdPos[j.str];
                         selPos[0].Set(j);
                         selPos[1] = chrdPos[k.str];
@@ -384,7 +326,7 @@ public class Searcher
                     break;
                 case 4:
                     //Already know j < k < l
-                    if(tonic.fretId < j.fretId) {
+                    if (tonic.fretId < j.fretId) {
                         selPos[0] = chrdPos[tonic.str];
                         selPos[0].Set(tonic);
                         selPos[1] = chrdPos[j.str];
@@ -393,9 +335,7 @@ public class Searcher
                         selPos[2].Set(k);
                         selPos[3] = chrdPos[l.str];
                         selPos[3].Set(l);
-                    }
-                    else if(tonic.fretId < k.fretId)
-                    {
+                    } else if (tonic.fretId < k.fretId) {
                         selPos[0] = chrdPos[j.str];
                         selPos[0].Set(j);
                         selPos[1] = chrdPos[tonic.str];
@@ -404,9 +344,7 @@ public class Searcher
                         selPos[2].Set(k);
                         selPos[3] = chrdPos[l.str];
                         selPos[3].Set(l);
-                    }
-                    else if(tonic.fretId < l.fretId)
-                    {
+                    } else if (tonic.fretId < l.fretId) {
                         selPos[0] = chrdPos[j.str];
                         selPos[0].Set(j);
                         selPos[1] = chrdPos[k.str];
@@ -415,9 +353,7 @@ public class Searcher
                         selPos[2].Set(tonic);
                         selPos[3] = chrdPos[l.str];
                         selPos[3].Set(l);
-                    }
-                    else
-                    {
+                    } else {
                         selPos[0] = chrdPos[j.str];
                         selPos[0].Set(j);
                         selPos[1] = chrdPos[k.str];
@@ -429,8 +365,7 @@ public class Searcher
                     }
                     break;
             }
-        }
-        else {
+        } else {
             //Set the selected fret positions
             switch (numPos) {
                 case 4:
@@ -450,63 +385,61 @@ public class Searcher
         //Find the best chord fingering
         double fngrScr = hm.FindBestFingering(selPos);
         Fingering fngr = new Fingering(chrdPos, tonic.str, chrd, fngrScr, false);
-        if(fngr.IsValid() && fngr.GetNumMts() <= maxMts && fngr.GetScore() >= minChrdScr)
+        if (fngr.IsValid() && fngr.GetNumMts() <= maxMts && fngr.GetScore() >= minChrdScr)
             chrds.add(fngr);
-        if(!enblBarre)  //If barre chords are not enabled return
+        if (!enblBarre)  //If barre chords are not enabled return
             return;
         FretPosition[] barrePos = new FretPosition[guit.GetNumStrings()];
-        for(int n = 0; n < guit.GetNumStrings(); ++n)
+        for (int n = 0; n < guit.GetNumStrings(); ++n)
             barrePos[n] = chrdPos[n].Clone();
         //Test if any fingers were actually barred
-        if(!hm.FindBarreFingering(barrePos, selPos, FindPotentialBars(selPos, tonic, lfps)))
+        if (!hm.FindBarreFingering(barrePos, selPos, FindPotentialBars(selPos, tonic, lfps)))
             return;
         Fingering barreFngr = new Fingering(barrePos, tonic.str, chrd, fngrScr, true);
-        if(barreFngr.IsValid() && barreFngr.GetNumMts() <= maxMts && barreFngr.GetScore() >= minChrdScr)
+        if (barreFngr.IsValid() && barreFngr.GetNumMts() <= maxMts && barreFngr.GetScore() >= minChrdScr)
             chrds.add(barreFngr);
     }
-    
+
     /**
      * Class for searching for chords in parallel
-     * @author Nicholas
      *
+     * @author Nicholas
      */
-    private class SearchTask implements Runnable
-    {
-    	private int[] chrd;
-    	private List<Fingering> fndFngr;
-    	private FretPosition tnc;
-    	private List<FretPosition> fPos;
-    	
-    	/**
-    	 * Gets the chords found by this thread
-    	 * @return The chords found by this thread
-    	 */
-    	public List<Fingering> GetChords()
-    	{
-    		return fndFngr;
-    	}
+    private class SearchTask implements Runnable {
+        private final int[] chrd;
+        private final FretPosition tnc;
+        private final List<FretPosition> fPos;
+        private List<Fingering> fndFngr;
 
-		/**
-		 * Search for chords on new thread
-		 */
-    	@Override
-		public void run() 
-		{
+        /**
+         * Constructor with search parameters
+         *
+         * @param srchChrd The chord to search for
+         * @param tonic    The list of tonics to search
+         * @param fps      The complete list of fret positions
+         */
+        public SearchTask(int[] srchChrd, FretPosition tonic, List<FretPosition> fps) {
+            chrd = srchChrd;
+            tnc = tonic;
+            fPos = fps;
+        }
+
+        /**
+         * Gets the chords found by this thread
+         *
+         * @return The chords found by this thread
+         */
+        public List<Fingering> GetChords() {
+            return fndFngr;
+        }
+
+        /**
+         * Search for chords on new thread
+         */
+        @Override
+        public void run() {
             fndFngr = Search(chrd, tnc, fPos);
-		}
-		
-    	/**
-    	 * Constructor with search parameters
-    	 * @param srchChrd The chord to search for
-    	 * @param tonic The list of tonics to search
-    	 * @param fps The complete list of fret positions
-    	 */
-    	public SearchTask(int[] srchChrd, FretPosition tonic, List<FretPosition> fps)
-    	{
-    		chrd = srchChrd;
-    		tnc = tonic;
-    		fPos = fps;
-    	}
+        }
     }
 }
 

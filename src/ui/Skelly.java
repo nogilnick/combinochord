@@ -8,7 +8,6 @@ import domain.Fingering;
 import domain.Guitar;
 import domain.HandModel;
 import domain.Searcher;
-import technical.HeuristicOptimizer;
 
 /**
  * A skeleton UI class to demonstrate the use
@@ -30,27 +29,29 @@ public class Skelly
 		//The guitar type
 		int gitType = GuitTypes.Acoustic.ordinal();
 		//Create a standard tuned guitar with 12 frets and default setup measurements
-		Guitar git = new Guitar(Constants.standard, 12, Constants.defNutSpc[gitType], Constants.defBrgSpc[gitType], Constants.defFrstFrtWdth[gitType], Constants.defSclLen[gitType]);
+		Guitar git = new Guitar(Constants.standard, 20, Constants.defNutSpc[gitType], Constants.defBrgSpc[gitType], Constants.defFrstFrtWdth[gitType], Constants.defSclLen[gitType]);
 		//Create the searcher object that searches for non-barre chords with
 		//a max of 2 mutes, a heuristic score >= 0.6 (60%) with a max
 		//search distance of 110mm.
-		List<Fingering> max = new ArrayList<Fingering>();
-		List<Fingering> min = new ArrayList<Fingering>();
-		Searcher srchr = new Searcher(git, hm, 2, 0.5, 110.0, false);
+		Searcher srchr = new Searcher(git, hm, 2, 0.7, 110.0, false);
+		long s = System.currentTimeMillis();
 		for(int i = 0; i < 12; ++i)
 		{
-			int[] chrd = Constants.ChordToKey(Constants.genericChords[7], i);
-			//Search for E Major chords with 4 threads
-			srchr.GenerateChords(chrd, 6);
-			srchr.SortChords();
-			//Retrieve the chords
-			List<Fingering> fngrs = srchr.GetChords();
-			max.addAll(fngrs.subList(0, 4));
-			min.addAll(fngrs.subList(fngrs.size() - 5, fngrs.size()));
+			for(int j = 0; j < Constants.genericChords.length; ++j)
+			{
+				int[] chrd = Constants.ChordToKey(Constants.genericChords[j], i);
+				//Search for E Major chords with 4 threads
+				srchr.GenerateChords(chrd, 6);
+			}
 		}
-		System.out.print("Running GA...\n");
-		HeuristicOptimizer ho = new HeuristicOptimizer(min, max, 100);
-		ho.RunGE();
+		long e = System.currentTimeMillis();
+		//Test Several chords
+		srchr.GenerateChords(Constants.ChordToKey(Constants.genericChords[8], 4), 6);
+		srchr.SortChords();
+		List<Fingering> res = srchr.GetChords();
+		for(Fingering f : res)
+			System.out.println(f.toString());
+		System.out.print("Total time: " + (e - s) + "ms\n");
 		return;
 	}
 }
