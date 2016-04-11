@@ -13,6 +13,8 @@ public class Constants {
     public static final double[] defBrgSpc = {58.7375, 56, 52};
     public static final double[] defNutSpc = {44.45, 48, 46};
     public static final String[] guitTypeStrs = {"Acoustic", "Classical", "Electric"};
+    //Guitar types
+    public enum GuitTypes { Acoustic, Classical, Electric }
     public static final GuitTypes[] guitTypes = GuitTypes.values();
     //Default maximum distances between fingers
     //1-2, 1-3, 1-4, 2-3, 2-4, 3-4
@@ -28,48 +30,55 @@ public class Constants {
     public static final int[] baritone = {35, 40, 45, 50, 54, 59};
     public static final int[] standard7 = {35, 40, 45, 50, 55, 59, 64};
     public static final int[] standard8 = {28, 35, 40, 45, 50, 55, 59, 64};
-    //Chords to be shifted a specific key
-    public static final int[][] genericChords = {
-            {},               //Empty chord
-            {0, 4, 7, 9},      //6th chord
-            {0, 2, 9},         //6th (no 5th)
-            {0, 2, 4, 9},      //6/9
-            {0, 4, 8},         //Augmented
-            {0, 3, 6},         //Diminished
-            {0, 3, 9},         //Diminished 7
-            {0, 3, 6, 9},      //Diminished 7 + flat 5th
-            {0, 4, 7},         //Major
-            {0, 4},            //Major 3rd
-            {0, 4, 11},        //Major 7
-            {0, 4, 7, 11},     //Major 7 + 5th
-            {0, 2, 4, 11},     //Major 9th
-            {0, 2, 4, 7, 11},  //Major 9 + 5th
-            {0, 2, 4, 7},      //Major Add 9
-            {0, 4, 10},        //Major Dominant 7th
-            {0, 4, 7, 10},     //Major Dominant 7th + 5th
-            {0, 4, 6, 10},     //Major 7b5
-            {0, 4, 8, 10},     //Major 7/5
-            {0, 2, 4, 10},     //Major 9th
-            {0, 1, 4, 10},     //Major 7b9
-            {0, 3, 4, 10},     //Major 7/9
-            {0, 4, 9, 10},     //Major 13th
-            {0, 3, 7},         //Minor
-            {0, 3, 8},         //Minor 6th
-            {0, 3, 7, 8},      //Minor 6th + 5th
-            {0, 2, 3, 7},      //Minor 9th
-            {0, 3, 5, 7},      //Minor 11th
-            {0, 3, 7, 8},      //Minor 13th
-            {0, 2, 3, 7, 8},   //Minor 13th + 9th
-            {0, 3, 10},        //Minor 7th
-            {0, 3, 7, 10},     //Minor 7th + 5th
-            {0, 3, 6, 10},     //Minor 7b5
-            {0, 3, 8, 10},     //Minor 7/5
-            {0, 2, 3, 10},     //Minor 9
-            {0, 1, 3, 10},     //Minor 7b9
-            {0, 7},            //Power chord
-            {0, 5, 7},         //Sus
-            {0, 2, 7}          //Sus2
+    
+    //12-bit bit-mapped sets representing generic chords
+    //To be shifted to a specific key
+    //Bit 0 : C
+    //Bit 1 : C#/Db
+    //...
+    //Bit 11 : B
+    public static final int[] genericChords = {
+    	      0,	//Empty chord
+    	      657,	//6th chord
+    	      517,	//6th (no 5th)
+    	      533,	//6/9
+    	      273,	//Augmented
+    	      73,	//Diminished
+    	      521,	//Diminished 7
+    	      585,	//Diminished 7 + flat 5th
+    	      145,	//Major
+    	      17,	//Major 3rd
+    	      2065,	//Major 7
+    	      2193,	//Major 7 + 5th
+    	      2069,	//Major 9th
+    	      2197,	//Major 9 + 5th
+    	      149,	//Major Add 9
+    	      1041,	//Major Dominant 7th
+    	      1169,	//Major Dominant 7th + 5th
+    	      1105,	//Major 7b5
+    	      1297,	//Major 7/5
+    	      1045,	//Major 9th
+    	      1043,	//Major 7b9
+    	      1049,	//Major 7/9
+    	      1553,	//Major 13th
+    	      137,	//Minor
+    	      265,	//Minor 6th
+    	      393,	//Minor 6th + 5th
+    	      141,	//Minor 9th
+    	      169,	//Minor 11th
+    	      393,	//Minor 13th
+    	      397,	//Minor 13th + 9th
+    	      1033,	//Minor 7th
+    	      1161,	//Minor 7th + 5th
+    	      1097,	//Minor 7b5
+    	      1289,	//Minor 7/5
+    	      1037,	//Minor 9
+    	      1035,	//Minor 7b9
+    	      129,	//Power chord
+    	      161,	//Sus
+    	      133	//Sus2
     };
+    
     //Strings corresponding to the different keys in western music
     //Indexed by their semi-tone number - 1
     public static final String[] KEYS = {
@@ -86,6 +95,7 @@ public class Constants {
             "A",
             "A#/Bb",
             "B"};
+    
     //Chords names ordered as their interval
     //representation above
     public static final String[] CHRD = {
@@ -128,19 +138,17 @@ public class Constants {
             "Power chord",
             "Sus",
             "Sus2"};
-
+    
     /**
-     * Shifts a generic chord to a specific key
-     *
-     * @param chord The generic chord
-     * @param tonic The new tonic
-     * @return The semi-tones (0-11) of the new chord
+     * Shifts a 12-bit chord BMS to a key (performing
+     * rotation as needed)
+     * @param chrd The chord BMS
+     * @param key The key to shift to
+     * @return The shifted chord
      */
-    public static int[] ChordToKey(int[] chord, int tonic) {
-        int[] newChrd = new int[chord.length];
-        for (int i = 0; i < newChrd.length; ++i)
-            newChrd[i] = (chord[i] + tonic) % 12;
-        return newChrd;
+    public static int ChordToKey(int chrd, int key)
+    {	//Perform bit rotation (0xFFF is 12 bits turned on)
+    	return ((chrd << key) & 0xFFF) | (chrd >> (12 - key));
     }
 
     /**
@@ -162,12 +170,8 @@ public class Constants {
      * @param chrd  The chord
      * @return True if pitch belongs in chrd
      */
-    public static boolean NoteInChord(int pitch, int[] chrd) {
-        for (int aChrd : chrd) {
-            if (aChrd == (pitch % 12))
-                return true;
-        }
-        return false;
+    public static boolean NoteInChord(int pitch, int chrd) {
+    	return ((1 << (pitch % 12)) & chrd) != 0;
     }
 
     /**
@@ -303,10 +307,4 @@ public class Constants {
             ret = -1;
         return ret;
     }
-
-    //Guitar types
-    public enum GuitTypes {
-        Acoustic, Classical, Electric
-    }
-
 }

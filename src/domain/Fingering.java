@@ -13,7 +13,7 @@ import java.util.Set;
 public class Fingering implements Serializable {
     private final FretPosition[] fp;
     //The chord produced
-    private final int[] chord;
+    private final int chord;
     //The anatomical distance-based score
     private final double fngrScr;
     //The maximum number of fingers allowed
@@ -57,7 +57,7 @@ public class Fingering implements Serializable {
      * @param scr    The fingering score
      * @param isB    True if the Fingering is to be a barre chord
      */
-    public Fingering(FretPosition[] frtLst, int tp, int[] chrd, double scr, boolean isB) {
+    public Fingering(FretPosition[] frtLst, int tp, int chrd, double scr, boolean isB) {
         isBarre = isB;
         fp = frtLst;
         chord = chrd;
@@ -157,8 +157,8 @@ public class Fingering implements Serializable {
      * This function synchronizes the Fingering object's data members
      * with the current contents of the fp array
      */
-    private void Update() {    //Note checklist; initialized to false via java spec
-        boolean[] noteCl = new boolean[12];
+    private void Update() {    //Note checklist (bit-mapped set); initialized to all off
+        int noteCl = 0;
         isValid = true;
         numFngrsUsed = 0;
         lwstSndStr = 0;
@@ -173,7 +173,7 @@ public class Fingering implements Serializable {
                 fp[i].Mute();
                 ++numMts;
             } else {   //The note will sound
-                noteCl[fp[i].note % 12] = true;
+                noteCl |= (1 << (fp[i].note % 12));
                 lwstSndStr = i;
                 if (fp[i].frt > 0) {   //String is depressed by a finger
                     ++numFngrsUsed;
@@ -193,12 +193,9 @@ public class Fingering implements Serializable {
         if (minFrt == Integer.MAX_VALUE)
             minFrt = 0;
         numMts -= lwstSndStr;
-        for (int aChord : chord) {
-            if (!noteCl[aChord]) {
-                isValid = false;
-                break;
-            }
-        }
+        //Check if all notes are sounding
+        if(noteCl != chord)
+        	isValid = false;
         //Final heuristic calculation
         ComputeScore();
     }

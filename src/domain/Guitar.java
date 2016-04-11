@@ -64,10 +64,10 @@ public class Guitar {    //All measurements are assumed to be in mm
     /**
      * Finds the (string, fret) positions of all given notes
      *
-     * @param nts The array of notes
+     * @param nts The BMS representing the chord
      * @return A list of fretpositions whose notes are in nts
      */
-    public List<FretPosition> FindNotePositions(int[] nts) {
+    public List<FretPosition> FindNotePositions(int nts) {
         List<FretPosition> notePos = new ArrayList<>();
         for (int i = 0; i < fretboard.size(); ++i) {
             if (Constants.NoteInChord(fretboard.get(i).note, nts))

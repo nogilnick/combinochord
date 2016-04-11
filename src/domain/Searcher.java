@@ -115,7 +115,7 @@ public class Searcher {   //The maximum number of mutes allowed
      * open strings.
      */
     public Fingering GetOpen() {
-        return new Fingering(guit.OpenStrings(), 0, new int[0], 0.0, false);
+        return new Fingering(guit.OpenStrings(), 0, 0, 0.0, false);
     }
 
     /**
@@ -123,16 +123,20 @@ public class Searcher {   //The maximum number of mutes allowed
      * HandModel, and the chord provided. Results are stored in a private data
      * member that can be accessed using GetChords()
      *
-     * @param chrd The chord provided
+     * @param chrd The generic chord to search for
+     * @param key The key of the chord
+     * @param numThrds The number of searcher threads to use
      */
-    public void GenerateChords(int[] chrd, int numThrds) {
+    public void GenerateChords(int chrd, int key, int numThrds) {
         chrdRes = new LinkedList<>();
         //Handle case of empty chord
-        if (chrd.length == 0)
+        if (chrd == 0)
             return;
+        //Shift the chord to the appropriate key
+        chrd = Constants.ChordToKey(chrd, key);
         List<FretPosition> fps = guit.FindNotePositions(chrd);
         //Find the tonic positions
-        List<FretPosition> tncs = FretPosition.FindFretPos(fps, chrd[0]);
+        List<FretPosition> tncs = FretPosition.FindFretPos(fps, key);
         //Find the non-tonic positions
         List<FretPosition> fPos = new ArrayList<>();
         for (int i = 0; i < fps.size(); ++i) {
@@ -191,7 +195,7 @@ public class Searcher {   //The maximum number of mutes allowed
      * @param notePos The list of potential non-tonic positions
      * @return The list of discovered fingerings
      */
-    private List<Fingering> Search(int[] chrd, FretPosition tonic, List<FretPosition> notePos) {
+    private List<Fingering> Search(int chrd, FretPosition tonic, List<FretPosition> notePos) {
         List<Fingering> dscChrds = new ArrayList<>();
         if (hm.GetNumFngr() < 1)    //Using 0 fingers; done searching
             return dscChrds;
@@ -265,7 +269,7 @@ public class Searcher {   //The maximum number of mutes allowed
      * @param k     The 3rd selected FretPosition
      * @param l     The 4th selected FretPosition
      */
-    private void TryCandidate(List<Fingering> chrds, List<FretPosition> lfps, int[] chrd, FretPosition tonic, FretPosition i, FretPosition j, FretPosition k, FretPosition l) {
+    private void TryCandidate(List<Fingering> chrds, List<FretPosition> lfps, int chrd, FretPosition tonic, FretPosition i, FretPosition j, FretPosition k, FretPosition l) {
         //Initilize the fingering array with open strings
         FretPosition[] chrdPos = new FretPosition[guit.GetNumStrings()];
         for (int n = 0; n < guit.GetNumStrings(); ++n)
@@ -406,7 +410,7 @@ public class Searcher {   //The maximum number of mutes allowed
      * @author Nicholas
      */
     private class SearchTask implements Runnable {
-        private final int[] chrd;
+        private final int chrd;
         private final FretPosition tnc;
         private final List<FretPosition> fPos;
         private List<Fingering> fndFngr;
@@ -418,7 +422,7 @@ public class Searcher {   //The maximum number of mutes allowed
          * @param tonic    The list of tonics to search
          * @param fps      The complete list of fret positions
          */
-        public SearchTask(int[] srchChrd, FretPosition tonic, List<FretPosition> fps) {
+        public SearchTask(int srchChrd, FretPosition tonic, List<FretPosition> fps) {
             chrd = srchChrd;
             tnc = tonic;
             fPos = fps;
