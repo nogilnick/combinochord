@@ -1,4 +1,4 @@
-package domain;
+package com.nickandross.combinochord.domain;
 
 import java.security.InvalidParameterException;
 
@@ -9,28 +9,25 @@ import java.security.InvalidParameterException;
 public class Constants {
     //Default guitar setup
     public static final double[] defSclLen = {620, 660, 630};
-    public static final double[] defFrstFrtWdth = {38, 36.0, 34.0};
-    public static final double[] defBrgSpc = {58.7375, 56, 52};
-    public static final double[] defNutSpc = {44.45, 48, 46};
+    public static final double[] defFret1Size = {38, 36.0, 34.0};
+    public static final double[] defBridgeWidth = {58.7375, 56, 52};
+    public static final double[] defNutWidth = {44.45, 48, 46};
     public static final String[] guitTypeStrs = {"Acoustic", "Classical", "Electric"};
     //Guitar types
     public enum GuitTypes { Acoustic, Classical, Electric }
     public static final GuitTypes[] guitTypes = GuitTypes.values();
     //Default maximum distances between fingers
     //1-2, 1-3, 1-4, 2-3, 2-4, 3-4
-    public static final double[] defMaxFR = {80.0, 95.0, 110.0, 52.0, 69.0, 47.0};
+    public static final double[] defMaxFR = {72.0, 93.0, 100.0, 45.0, 70.0, 45.0};
     //Default minimum distances between fingers
     //1-2, 1-3, 1-4, 2-3, 2-4, 3-4
-    public static final double[] defMinFR = {5.0, 15.0, 25.0, 6.0, 12, 8.5};
-    //Maximum distance between any two fingers
-    public static final double maxDist = 110.0;
+    public static final double[] defMinFR = {5.0, 10.0, 20.0, 5.0, 10.0, 5.0};
     //Tunings
     public static final int[] standard = {40, 45, 50, 55, 59, 64};
     public static final int[] dropD = {38, 45, 50, 55, 59, 64};
     public static final int[] baritone = {35, 40, 45, 50, 54, 59};
     public static final int[] standard7 = {35, 40, 45, 50, 55, 59, 64};
     public static final int[] standard8 = {28, 35, 40, 45, 50, 55, 59, 64};
-    
     //12-bit bit-mapped sets representing generic chords
     //To be shifted to a specific key
     //Bit 0 : C
@@ -38,45 +35,45 @@ public class Constants {
     //...
     //Bit 11 : B
     public static final int[] genericChords = {
-    	      0,	//Empty chord
-    	      657,	//6th chord
-    	      517,	//6th (no 5th)
-    	      533,	//6/9
-    	      273,	//Augmented
-    	      73,	//Diminished
-    	      521,	//Diminished 7
-    	      585,	//Diminished 7 + flat 5th
-    	      145,	//Major
-    	      17,	//Major 3rd
-    	      2065,	//Major 7
-    	      2193,	//Major 7 + 5th
-    	      2069,	//Major 9th
-    	      2197,	//Major 9 + 5th
-    	      149,	//Major Add 9
-    	      1041,	//Major Dominant 7th
-    	      1169,	//Major Dominant 7th + 5th
-    	      1105,	//Major 7b5
-    	      1297,	//Major 7/5
-    	      1045,	//Major 9th
-    	      1043,	//Major 7b9
-    	      1049,	//Major 7/9
-    	      1553,	//Major 13th
-    	      137,	//Minor
-    	      265,	//Minor 6th
-    	      393,	//Minor 6th + 5th
-    	      141,	//Minor 9th
-    	      169,	//Minor 11th
-    	      393,	//Minor 13th
-    	      397,	//Minor 13th + 9th
-    	      1033,	//Minor 7th
-    	      1161,	//Minor 7th + 5th
-    	      1097,	//Minor 7b5
-    	      1289,	//Minor 7/5
-    	      1037,	//Minor 9
-    	      1035,	//Minor 7b9
-    	      129,	//Power chord
-    	      161,	//Sus
-    	      133	//Sus2
+            0b000000000000,	//Empty chord
+            0b001010010001,	//6th chord
+            0b001000000101,	//6th (no 5th)
+            0b001000010101,	//6/9
+            0b000100010001,	//Augmented
+            0b000001001001,	//Diminished
+            0b001000001001,	//Diminished 7
+            0b001001001001,	//Diminished 7 + flat 5th
+            0b000010010001,	//Major
+            0b000000010001,	//Major 3rd
+            0b100000010001,	//Major 7
+            0b100010010001,	//Major 7 + 5th
+            0b100000010101,	//Major 9th
+            0b100010010101,	//Major 9 + 5th
+            0b000010010101,	//Major Add 9
+            0b010000010001,	//Major Dominant 7th
+            0b010010010001,	//Major Dominant 7th + 5th
+            0b010001010001,	//Major 7b5
+            0b010100010001,	//Major 7/5
+            0b010000010101,	//Major 9th
+            0b010000010011,	//Major 7b9
+            0b010000011001,	//Major 7/9
+            0b011000010001,	//Major 13th
+            0b000010001001,	//Minor
+            0b000100001001,	//Minor 6th
+            0b000110001001,	//Minor 6th + 5th
+            0b000010001101,	//Minor 9th
+            0b000010101001,	//Minor 11th
+            0b000110001001,	//Minor 13th
+            0b000110001101,	//Minor 13th + 9th
+            0b010000001001,	//Minor 7th
+            0b010010001001,	//Minor 7th + 5th
+            0b010001001001,	//Minor 7b5
+            0b010100001001,	//Minor 7/5
+            0b010000001101,	//Minor 9
+            0b010000001011,	//Minor 7b9
+            0b000010000001,	//Power chord
+            0b000010100001,	//Sus
+            0b000010000101	//Sus2
     };
     
     //Strings corresponding to the different keys in western music
@@ -100,45 +97,65 @@ public class Constants {
     //representation above
     public static final String[] CHRD = {
             "-",
-            "6th chord",
+            "6th",
             "6th (no 5th)",
             "6/9",
-            "Augmented",
-            "Diminished",
-            "Diminished 7",
-            "Diminished 7 + flat 5th",
-            "Major",
-            "Major 3rd",
-            "Major 7",
-            "Major 7 + 5th",
-            "Major 9th",
-            "Major 9 + 5th",
-            "Major Add 9",
-            "Major Dominant 7th",
-            "Major Dominant 7th + 5th",
-            "Major 7b5",
-            "Major 7/5",
-            "Major 9th",
-            "Major 7b9",
-            "Major 7/9",
-            "Major 13th",
-            "Minor",
-            "Minor 6th",
-            "Minor 6th + 5th",
-            "Minor 9th",
-            "Minor 11th",
-            "Minor 13th",
-            "Minor 13th + 9th",
-            "Minor 7th",
-            "Minor 7th + 5th",
-            "Minor 7b5",
-            "Minor 7/5",
-            "Minor 9",
-            "Minor 7b9",
-            "Power chord",
+            "Aug",
+            "Dim",
+            "Dim 7",
+            "Dim 7 + b5",
+            "Maj",
+            "Maj 3rd",
+            "Maj 7",
+            "Maj 7 + 5th",
+            "Maj 9th",
+            "Maj 9 + 5th",
+            "Maj Add 9",
+            "Maj Dom 7th",
+            "Maj Dom 7th + 5th",
+            "Maj 7b5",
+            "Maj 7/5",
+            "Maj 9th",
+            "Maj 7b9",
+            "Maj 7/9",
+            "Maj 13th",
+            "Min",
+            "Min 6th",
+            "Min 6th + 5th",
+            "Min 9th",
+            "Min 11th",
+            "Min 13th",
+            "Min 13th + 9th",
+            "Min 7th",
+            "Min 7th + 5th",
+            "Min 7b5",
+            "Min 7/5",
+            "Min 9",
+            "Min 7b9",
+            "5th",
             "Sus",
             "Sus2"};
-    
+
+    /**
+     * Takes a note bit-mapped set and returns
+     * a string representation of it
+     * @param noteBMS The not bit-mapped set
+     * @return A string representation of noteBMS
+     */
+    public static String BMSToNotes(int noteBMS)
+    {
+        int c = 0;
+        String ret = "{ ";
+        while(noteBMS > 0)
+        {
+            if((noteBMS & 1) != 0)
+                ret += NoteToString(c + 12, false) + " ";
+            noteBMS >>= 1;
+            ++c;
+        }
+        return ret + "}";
+    }
+
     /**
      * Shifts a 12-bit chord BMS to a key (performing
      * rotation as needed)
@@ -170,8 +187,8 @@ public class Constants {
      * @param chrd  The chord
      * @return True if pitch belongs in chrd
      */
-    public static boolean NoteInChord(int pitch, int chrd) {
-    	return ((1 << (pitch % 12)) & chrd) != 0;
+    public static boolean NoteNotInChord(int pitch, int chrd) {
+    	return ((1 << (pitch % 12)) & chrd) == 0;
     }
 
     /**
